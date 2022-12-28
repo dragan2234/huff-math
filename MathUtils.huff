@@ -1,0 +1,55 @@
+/* Interface */
+#define function subMod(uint256,uint256,uint256) pure returns (uint256)
+#define function expMod(uint256,uint256,uint256) pure returns (uint256)
+
+/* Methods */
+#define macro SUB_MOD() = takes (0) returns (0) {
+    // a - b % n = a + (n-b) % n
+    0x44 calldataload     // [number3]  load third 32 bytes onto the stack - (n)
+
+    0x24 calldataload     // [number2, number3]  load second 32 bytes onto the stack - (n)
+    0x44 calldataload     // [number3, number2, number3]  load third 32 bytes onto the stack - (b)
+    sub                   // [number3-number2, number3]
+    0x04 calldataload     // [number1, number3-number2,number3]  load first 32 bytes onto the stack - (a)
+    addmod                // [number1 + (number3-number2) % number3]
+
+    0x00 mstore           // place [number1 + (number3-number2) % number3] in memory
+    0x20 0x00 return      // return first 32 bytes (result)
+}
+
+#define macro EXP_MOD() = takes (0) returns (0) {
+    0x44 calldataload     // [_modules] // load third 32 bytes onto the stack - (b)
+    0xa0 mstore
+    0x24 calldataload     // [_exponent] // load second 32 bytes onto the stack - (n)
+    0x80 mstore
+    0x04 calldataload     // [_base] // load first 32 bytes onto the stack - (a)
+    0x60 mstore
+    0x20 0x40 mstore
+    0x20 0x20 mstore
+    0x20 0x00 mstore
+
+
+    0x20                                        // [retSize]
+    0xc0                                        // [retOffset, retSize]
+    0xc0                                        // [argSize, retOffset, retSize]
+    0x00                                        // [argOffset, argSize, retOffset, retSize]
+    0x05                                        // [address, argOffset, argSize, retOffset, retSize]
+    gas                                         // [gas, address, argOffset, argSize, retOffset, retSize]
+    staticcall                                  // [success, address]
+    0x20 0xc0 return      // return first 32 bytes (result)
+}
+
+
+#define macro MAIN() = takes (0) returns (0) {
+    // Identify which function is being called.
+    0x00 calldataload 0xE0 shr
+    dup1 __FUNC_SIG(subMod) eq submod jumpi
+    dup1 __FUNC_SIG(expMod) eq expmod jumpi
+
+    0x00 0x00 revert
+
+    submod:
+        SUB_MOD()
+    expmod:
+        EXP_MOD()
+}
