@@ -1,6 +1,7 @@
 /* Interface */
 #define function subMod(uint256,uint256,uint256) pure returns (uint256)
 #define function expMod(uint256,uint256,uint256) pure returns (uint256)
+#define function powers_array(uint256) pure return (uint256[])
 
 /* Methods */
 #define macro SUB_MOD() = takes (0) returns (0) {
@@ -39,12 +40,44 @@
     0x20 0xc0 return      // return first 32 bytes (result)
 }
 
+// @todo: fix comments, fix array length, loop 
+#define macro POWERS_ARRAY() = takes (0) returns (0) {
+    0x04 calldataload     // [beta]
+    0x20 mstore           // [] memory: 0x20beta
+    0x01 0x00 mstore      // store the counter to memory: [0x00 0x00, 0x20 beta]
+    loop:
+        0x20 mload        // [beta]
+        0x00 mload        // [counter,beta]
+        0x20              // [memsize,counter,beta]
+        mul            // [memsize*counter,beta]
+        mload                // [mload(memsize*counter), beta]
+        mul                // [mul(mload(memsize*counter)*beta)] result
+        0x00 mload                // counter + 1 store as counter
+        0x01 add
+        0x00 mstore
+                        // mstore result to counter*memsize
+                        // check if counter is > domain_size
+        0x00 mload                // counter + 1 store as counter  
+        0x20 mul
+        mstore
+        0x00 mload
+        0x40000      
+        //swap1           // 
+        gt              // 
+        loop            // [loop]
+        jumpi           // If the var reaches 0x40000 it won't loop any more
+
+
+    0x040000 0x20 
+    return
+}
 
 #define macro MAIN() = takes (0) returns (0) {
     // Identify which function is being called.
     0x00 calldataload 0xE0 shr
     dup1 __FUNC_SIG(subMod) eq submod jumpi
     dup1 __FUNC_SIG(expMod) eq expmod jumpi
+    dup1 __FUNC_SIG(powers_array) eq powersArray jumpi
 
     0x00 0x00 revert
 
@@ -52,4 +85,6 @@
         SUB_MOD()
     expmod:
         EXP_MOD()
+    powersArray:
+        POWERS_ARRAY()
 }
